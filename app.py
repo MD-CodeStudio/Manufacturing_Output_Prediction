@@ -1,0 +1,291 @@
+import streamlit as st
+import pandas as pd
+import joblib
+
+
+# --------------------------------------------------
+# Page Configuration
+# --------------------------------------------------
+
+st.set_page_config(
+    page_title="Manufacturing Output Prediction",
+    page_icon="🏭",
+    layout="wide"
+)
+
+
+# --------------------------------------------------
+# Load Trained Model
+# --------------------------------------------------
+
+@st.cache_resource
+def load_model():
+    return joblib.load("manufacturing_output_model.pkl")
+
+
+model = load_model()
+
+
+# --------------------------------------------------
+# Title and Description
+# --------------------------------------------------
+
+st.title("🏭 Manufacturing Equipment Output Prediction")
+
+st.markdown(
+    """
+    This application predicts the expected number of plastic parts produced
+    per hour based on machine operating conditions, material properties,
+    environmental conditions, and production settings.
+    """
+)
+
+st.divider()
+
+
+# --------------------------------------------------
+# Input Section
+# --------------------------------------------------
+
+st.subheader("Enter Manufacturing Parameters")
+
+col1, col2, col3 = st.columns(3)
+
+
+# --------------------------------------------------
+# Numerical Inputs
+# --------------------------------------------------
+
+with col1:
+
+    injection_temperature = st.number_input(
+        "Injection Temperature",
+        min_value=0.0,
+        value=200.0,
+        step=1.0
+    )
+
+    injection_pressure = st.number_input(
+        "Injection Pressure",
+        min_value=0.0,
+        value=100.0,
+        step=1.0
+    )
+
+    cycle_time = st.number_input(
+        "Cycle Time",
+        min_value=0.0,
+        value=30.0,
+        step=0.1
+    )
+
+    cooling_time = st.number_input(
+        "Cooling Time",
+        min_value=0.0,
+        value=10.0,
+        step=0.1
+    )
+
+    material_viscosity = st.number_input(
+        "Material Viscosity",
+        min_value=0.0,
+        value=100.0,
+        step=1.0
+    )
+
+    ambient_temperature = st.number_input(
+        "Ambient Temperature",
+        value=25.0,
+        step=0.1
+    )
+
+
+with col2:
+
+    machine_age = st.number_input(
+        "Machine Age",
+        min_value=0.0,
+        value=5.0,
+        step=1.0
+    )
+
+    operator_experience = st.number_input(
+        "Operator Experience",
+        min_value=0.0,
+        value=5.0,
+        step=1.0
+    )
+
+    maintenance_hours = st.number_input(
+        "Maintenance Hours",
+        min_value=0.0,
+        value=10.0,
+        step=1.0
+    )
+
+    efficiency_score = st.number_input(
+        "Efficiency Score",
+        min_value=0.0,
+        value=75.0,
+        step=0.1
+    )
+
+    machine_utilization = st.number_input(
+        "Machine Utilization",
+        min_value=0.0,
+        value=75.0,
+        step=0.1
+    )
+
+    temperature_pressure_ratio = st.number_input(
+        "Temperature Pressure Ratio",
+        min_value=0.0,
+        value=2.0,
+        step=0.01
+    )
+
+
+with col3:
+
+    total_cycle_time = st.number_input(
+        "Total Cycle Time",
+        min_value=0.0,
+        value=40.0,
+        step=0.1
+    )
+
+    hour = st.number_input(
+        "Hour of Day",
+        min_value=0,
+        max_value=23,
+        value=12,
+        step=1
+    )
+
+
+# --------------------------------------------------
+# Categorical Inputs
+# --------------------------------------------------
+
+st.subheader("Production Settings")
+
+cat_col1, cat_col2, cat_col3, cat_col4 = st.columns(4)
+
+with cat_col1:
+
+    shift = st.selectbox(
+        "Shift",
+        ["Day", "Evening", "Night"]
+    )
+
+with cat_col2:
+
+    machine_type = st.selectbox(
+        "Machine Type",
+        ["Type_A", "Type_B", "Type_C"]
+    )
+
+with cat_col3:
+
+    material_grade = st.selectbox(
+        "Material Grade",
+        ["Economy", "Standard", "Premium"]
+    )
+
+with cat_col4:
+
+    day_of_week = st.selectbox(
+        "Day of Week",
+        [
+            "Monday",
+            "Tuesday",
+            "Wednesday",
+            "Thursday",
+            "Friday",
+            "Saturday",
+            "Sunday"
+        ]
+    )
+
+
+st.divider()
+
+
+# --------------------------------------------------
+# Prediction
+# --------------------------------------------------
+
+if st.button("🔮 Predict Parts Per Hour", use_container_width=True):
+
+    # Create input dataframe using the same feature names
+    # used during model training.
+
+    input_data = pd.DataFrame({
+        "Injection_Temperature": [injection_temperature],
+        "Injection_Pressure": [injection_pressure],
+        "Cycle_Time": [cycle_time],
+        "Cooling_Time": [cooling_time],
+        "Material_Viscosity": [material_viscosity],
+        "Ambient_Temperature": [ambient_temperature],
+        "Machine_Age": [machine_age],
+        "Operator_Experience": [operator_experience],
+        "Maintenance_Hours": [maintenance_hours],
+        "Shift": [shift],
+        "Machine_Type": [machine_type],
+        "Material_Grade": [material_grade],
+        "Day_of_Week": [day_of_week],
+        "Temperature_Pressure_Ratio": [temperature_pressure_ratio],
+        "Total_Cycle_Time": [total_cycle_time],
+        "Efficiency_Score": [efficiency_score],
+        "Machine_Utilization": [machine_utilization],
+        "Hour": [hour]
+    })
+
+
+    # Make prediction
+    prediction = model.predict(input_data)[0]
+
+
+    # --------------------------------------------------
+    # Display Prediction
+    # --------------------------------------------------
+
+    st.subheader("Prediction Result")
+
+    result_col1, result_col2, result_col3 = st.columns(3)
+
+    with result_col2:
+
+        st.metric(
+            label="Predicted Parts Per Hour",
+            value=f"{prediction:.2f}"
+        )
+
+
+    st.success(
+        f"The predicted production output is **{prediction:.2f} parts per hour**."
+    )
+
+
+    # --------------------------------------------------
+    # Show Input Summary
+    # --------------------------------------------------
+
+    with st.expander("View Input Parameters"):
+
+        st.dataframe(
+            input_data.T.rename(columns={0: "Value"}),
+            use_container_width=True
+        )
+
+
+# --------------------------------------------------
+# Footer
+# --------------------------------------------------
+
+st.divider()
+
+st.caption(
+    "Manufacturing Equipment Output Prediction | "
+    "Linear Regression Model"
+)
